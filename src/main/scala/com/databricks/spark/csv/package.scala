@@ -98,7 +98,9 @@ package object csv {
      * Note that a codec entry in the parameters map will be ignored.
      */
     def saveAsCsvFile(path: String, parameters: Map[String, String] = Map(),
-                      compressionCodec: Class[_ <: CompressionCodec] = null): Unit = {
+                      compressionCodec: Class[_ <: CompressionCodec] = null,
+                      headerOnce: Boolean = false ): Unit = {
+
       // TODO(hossein): For nested types, we may want to perform special work
       val delimiter = parameters.getOrElse("delimiter", ",")
       // Before this change the csvFormatter wrote dates like this:
@@ -181,7 +183,7 @@ package object csv {
           .withNullString(nullValue)
 
         new Iterator[String] {
-          var firstRow: Boolean = generateHeader
+          var firstRow: Boolean = if (headerOnce) generateHeader && (index==0) else generateHeader
 
           override def hasNext: Boolean = iter.hasNext || firstRow
 
