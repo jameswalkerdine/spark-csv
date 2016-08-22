@@ -20,6 +20,7 @@ import java.sql.{Timestamp, Date}
 
 import org.apache.commons.csv.{CSVFormat, QuoteMode}
 import org.apache.hadoop.io.compress.CompressionCodec
+import org.apache.spark.TaskContext
 import org.apache.spark.sql.types.{DateType, TimestampType}
 
 import org.apache.spark.sql.{DataFrame, SQLContext}
@@ -98,8 +99,7 @@ package object csv {
      * Note that a codec entry in the parameters map will be ignored.
      */
     def saveAsCsvFile(path: String, parameters: Map[String, String] = Map(),
-                      compressionCodec: Class[_ <: CompressionCodec] = null,
-                      headerOnce: Boolean = false ): Unit = {
+                      compressionCodec: Class[_ <: CompressionCodec] = null): Unit = {
 
       // TODO(hossein): For nested types, we may want to perform special work
       val delimiter = parameters.getOrElse("delimiter", ",")
@@ -183,7 +183,15 @@ package object csv {
           .withNullString(nullValue)
 
         new Iterator[String] {
-          var firstRow: Boolean = if (headerOnce) generateHeader && (index==0) else generateHeader
+
+          var oneHeader: Boolean = parameters.get("oneHeader") match {
+                        case Some(v) if v.equalsIgnoreCase("true") =>
+                          true
+                        case _ => false
+                      }
+
+          var firstRow: Boolean = (generateHeader && !oneHeader) ||
+            (generateHeader && (TaskContext.getPartitionId() == 0))
 
           override def hasNext: Boolean = iter.hasNext || firstRow
 
